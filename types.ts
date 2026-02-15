@@ -1,3 +1,5 @@
+import { User } from '@supabase/supabase-js';
+
 export type Platform = 'instagram' | 'facebook' | 'linkedin' | 'x';
 
 export interface AuthorConfig {
@@ -35,11 +37,16 @@ export interface MockupState {
   metrics: MetricsConfig;
   appearance: AppearanceConfig;
   isAppDarkMode: boolean;
+  isPro: boolean;
+  user: User | null;
   setPlatform: (platform: Platform) => void;
   updateAuthor: (data: Partial<AuthorConfig>) => void;
   updateContent: (data: Partial<PostContent>) => void;
   updateMetrics: (data: Partial<MetricsConfig>) => void;
   updateAppearance: (data: Partial<AppearanceConfig>) => void;
   toggleAppDarkMode: () => void;
+  togglePro: () => void;
+  setUser: (user: User | null) => void;
   reset: () => void;
+  setState: (state: Partial<MockupState>) => void;
 }

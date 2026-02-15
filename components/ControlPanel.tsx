@@ -7,20 +7,46 @@ import {
 import { useStore } from '../store';
 import { Platform } from '../types';
 
-export const ControlPanel = () => {
+interface ControlPanelProps {
+  onUpgradeTrigger: () => void;
+}
+
+export const ControlPanel: React.FC<ControlPanelProps> = ({ onUpgradeTrigger }) => {
   const {
-    platform, author, content, metrics, appearance,
+    platform, author, content, metrics, appearance, isPro,
     setPlatform, updateAuthor, updateContent, updateMetrics, updateAppearance
   } = useStore();
 
   const [openAccordion, setOpenAccordion] = React.useState<string | null>("author");
+  const [uploading, setUploading] = React.useState(false);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, field: 'profile' | 'post') => {
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>, field: 'profile' | 'post') => {
     const file = e.target.files?.[0];
     if (file) {
-      const url = URL.createObjectURL(file);
-      if (field === 'profile') updateAuthor({ profilePicture: url });
-      else updateContent({ image: url });
+      try {
+        setUploading(true);
+        // Use local preview immediately for better UX while uploading?
+        // For now, let's just upload. Or maybe do both?
+        // Let's do direct upload to ensure persistence first.
+        const { uploadImage } = await import('../src/lib/supabase'); // Dynamic import to avoid circular dependency issues if any
+        const url = await uploadImage(file);
+
+        if (field === 'profile') updateAuthor({ profilePicture: url });
+        else updateContent({ image: url });
+      } catch (error) {
+        console.error('Upload failed:', error);
+        alert('Failed to upload image. Please try again.');
+      } finally {
+        setUploading(false);
+      }
+    }
+  };
+
+  const handleProFeature = (action: () => void) => {
+    if (isPro) {
+      action();
+    } else {
+      onUpgradeTrigger();
     }
   };
 
@@ -34,6 +60,13 @@ export const ControlPanel = () => {
   const toggleAccordion = (id: string) => {
     setOpenAccordion(openAccordion === id ? null : id);
   };
+
+  const ProLock = () => (
+    <div className="flex items-center text-xs text-amber-500 font-medium ml-2 cursor-pointer" onClick={onUpgradeTrigger}>
+      <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mr-1"><rect width="18" height="11" x="3" y="11" rx="2" ry="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></svg>
+      PRO
+    </div>
+  );
 
   return (
     <div className="h-full flex flex-col bg-background border-r border-border overflow-y-auto">
@@ -89,11 +122,17 @@ export const ControlPanel = () => {
                 />
               </div>
               <div className="flex items-center justify-between">
-                <Label htmlFor="verified">Verified Badge</Label>
+                <div className="flex items-center">
+                  <Label htmlFor="verified">Verified Badge</Label>
+                  {!isPro && <ProLock />}
+                </div>
                 <Switch
                   id="verified"
                   checked={author.verified}
-                  onCheckedChange={(c) => updateAuthor({ verified: c })}
+                  onCheckedChange={(c) => handleProFeature(() => updateAuthor({ verified: c }))}
+                // We don't strictly disable it to allow the click to trigger the modal check, 
+                // but we could also disable and use a wrapper for the click.
+                // For better UX, let the switch be clickable but intercept the change.
                 />
               </div>
               <div className="grid w-full items-center gap-1.5">
@@ -169,13 +208,31 @@ export const ControlPanel = () => {
             <div className="space-y-4 pt-2">
               <div className="flex items-center justify-between">
                 <div className="flex flex-col gap-1">
-                  <Label htmlFor="darkMode">Mockup Dark Mode</Label>
+                  <div className="flex items-center">
+                    <Label htmlFor="darkMode">Mockup Dark Mode</Label>
+                    {!isPro && <ProLock />}
+                  </div>
                   <span className="text-xs text-muted-foreground">Applies dark theme to the generated post</span>
                 </div>
                 <Switch
                   id="darkMode"
                   checked={appearance.darkMode}
-                  onCheckedChange={(c) => updateAppearance({ darkMode: c })}
+                  onCheckedChange={(c) => handleProFeature(() => updateAppearance({ darkMode: c }))}
+                />
+              </div>
+
+              <div className="flex items-center justify-between">
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center">
+                    <Label htmlFor="transparentBg">Transparent Background</Label>
+                    {!isPro && <ProLock />}
+                  </div>
+                  <span className="text-xs text-muted-foreground">Remove background for easy export</span>
+                </div>
+                <Switch
+                  id="transparentBg"
+                  checked={appearance.transparentBackground}
+                  onCheckedChange={(c) => handleProFeature(() => updateAppearance({ transparentBackground: c }))}
                 />
               </div>
             </div>

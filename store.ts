@@ -29,6 +29,8 @@ const INITIAL_STATE = {
     transparentBackground: false,
   },
   isAppDarkMode: true,
+  isPro: false,
+  user: null,
 };
 
 export const useStore = create<MockupState>()(
@@ -52,10 +54,17 @@ export const useStore = create<MockupState>()(
             appearance: { ...state.appearance, darkMode: newMode }
           };
         }),
+      togglePro: () => set((state) => ({ isPro: !state.isPro })),
+      setUser: (user) => set({ user }),
       reset: () => set(INITIAL_STATE),
+      setState: (newState) => set((state) => ({ ...state, ...newState })),
     }),
     {
       name: 'postly-storage-v1',
+      partialize: (state) => ({
+        ...state,
+        user: undefined, // Don't persist user session in local storage, let Supabase handle it
+      }),
     }
   )
 );
